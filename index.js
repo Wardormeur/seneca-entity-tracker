@@ -8,23 +8,28 @@
 
 // By default, it'll use the save$ act to hook on.
 // For performance, you can also specify specific act to avoid checking upon every save of your instance of seneca-entity
-var entities = [];
 
 module.exports = function entityTracker (options) {
+  var entities = [];
   entities = options.entities;
   var seneca = this;
-  console.log('export');
-  seneca.wrap({cmd: 'save', role: 'entity'}, save);
-  seneca.wrap({cmd: 'remove', role: 'entity'}, remove);
-  seneca.wrap({role: 'entity', cmd: 'save', ent: '*', name: 'color'}, test);
+  if (!entities || entities.length === 0) {
+    throw(new Error('Entities to track undefined'));
+  }
+  entities.forEach(function (entity) {
+    seneca.add({ role: 'entity', cmd: 'save', name: entity }, save);
+    seneca.add({ role: 'entity', cmd: 'remove', name: entity }, remove);
+  });
   return {
     name: 'entity-tracker'
   };
 };
 
 function remove (args, cb) {
-  var cmd = {role: 'entity', cmd: 'save'};
-  args.ent.deleted_at = new Date();
+  var cmd = { role: 'entity', cmd: 'save' };
+  if (!args.ent.deleted_at) {
+    args.ent.deleted_at = new Date();
+  }
   cmd.ent = args.ent;
   cmd.name = args.name;
   this.act(cmd, cb);
@@ -32,16 +37,15 @@ function remove (args, cb) {
 
 function save (args, cb) {
   var date = new Date();
-  if (args.ent.id) {
-    args.ent.updated_at = date;
-  } else {
-    args.ent.created_at = date;
+  // Always clear up created_at fields, it shouldn't be handled by the user
+  if (!args.ent.deleted_at) {
+    delete args.ent.created_at;
+    delete args.ent.deleted_at;
+    if (args.ent.id) {
+      args.ent.updated_at = date;
+    } else {
+      args.ent.created_at = date;
+    }
   }
-  console.log(args.ent);
-  this.prior(args, cb);
-}
-
-function test (args, cb) {
-  console.log('test', args);
   this.prior(args, cb);
 }
