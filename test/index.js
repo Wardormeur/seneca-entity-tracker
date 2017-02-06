@@ -63,7 +63,7 @@ describe('seneca-entity-tracker', function () {
   });
   it('should avoid being deleted twice and keep the originial deletion date', function (done) {
     ENTITY.remove$(color, function (err, entity) {
-      expect(entity.deleted_at).to.be.equal(color.deleted_at);
+      expect(entity.deleted_at.toString()).to.be.equal(color.deleted_at.toString());
       done();
     });
   });
